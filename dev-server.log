@@ -1,0 +1,29 @@
+
+> ai-curriculum-analyzer@0.1.0 dev
+> next dev -p 3001
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 5.8s
+ ○ Compiling / ...
+ ✓ Compiled / in 8.5s (1499 modules)
+ GET / 200 in 3983ms
+ ✓ Compiled in 662ms (728 modules)
+ GET / 200 in 162ms
+ ✓ Compiled /favicon.ico in 345ms (785 modules)
+ GET /favicon.ico 200 in 435ms
+ GET / 200 in 137ms
+ GET /favicon.ico 200 in 10ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 4.5s (2509 modules)
+ ○ Compiling /students ...
+ ✓ Compiled /students in 705ms (2525 modules)
+ ○ Compiling /api/analyze ...
+ ✓ Compiled /api/analyze in 4.1s (1865 modules)
+ POST /api/analyze 200 in 61681ms
+ ○ Compiling /results ...
+ ✓ Compiled /results in 1632ms (3282 modules)
+ GET / 200 in 798ms

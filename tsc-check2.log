@@ -1,0 +1,2 @@
+app/api/analyze/route.ts(80,740): error TS1005: ',' expected.
+app/api/analyze/route.ts(80,747): error TS1005: ',' expected.

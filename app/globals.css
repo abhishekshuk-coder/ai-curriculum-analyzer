@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #1a2233;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.25);
+  color: #102a56;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #f5f7fa;
+}
+::-webkit-scrollbar-thumb {
+  background: #c8d3e6;
+  border-radius: 999px;
+  border: 2px solid #f5f7fa;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1e3a8a;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Gradient text for headlines / accents */
+  .text-gradient {
+    background: linear-gradient(90deg, #1e3a8a 0%, #10b981 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Animated gradient border glow used on hover for cards/buttons */
+  .glow-ring {
+    position: relative;
+  }
+  .glow-ring::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(120deg, #1e3a8a, #10b981, #0d7377, #1e3a8a);
+    background-size: 300% 300%;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  .glow-ring:hover::before {
+    opacity: 1;
+    animation: gradient-x 3s ease infinite;
+    background-size: 200% 200%;
+  }
+
+  /* Subtle dotted grid backdrop for sections */
+  .bg-dot-grid {
+    background-image: radial-gradient(circle at 1px 1px, rgba(30, 58, 138, 0.10) 1px, transparent 0);
+    background-size: 28px 28px;
+  }
+
+  /* Ripple effect container for buttons */
+  .btn-ripple {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .btn-ripple::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.45) 0%, transparent 60%);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: transform 0.5s ease, opacity 0.5s ease;
+  }
+  .btn-ripple:active::after {
+    opacity: 1;
+    transform: scale(1.6);
+    transition: 0s;
+  }
+}
