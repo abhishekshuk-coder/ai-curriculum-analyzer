@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import LastUpdatedBanner from "@/components/LastUpdatedBanner";
 import ScoreGrid from "@/components/ScoreGrid";
 import FeatureGrid from "@/components/FeatureGrid";
 import UploadModule from "@/components/UploadModule";
@@ -11,6 +12,7 @@ export default function Home() {
     <main className="min-h-screen bg-background">
       <Navbar />
       <Hero />
+      <LastUpdatedBanner />
       <ScoreGrid />
       <FeatureGrid />
       <UploadModule />
