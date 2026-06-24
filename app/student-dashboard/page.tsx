@@ -1,8 +1,10 @@
 "use client";
 
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Download, Radar, TrendingUp, Grid3x3, ListChecks, Sparkles, FileSearch, ListOrdered } from "lucide-react";
+import { ArrowLeft, Download, Radar, TrendingUp, Grid3x3, ListChecks, Sparkles, FileSearch, ListOrdered, GraduationCap } from "lucide-react";
 import HealthMeter from "@/components/HealthMeter";
 import ScoreGrid from "@/components/ScoreGrid";
 import SkillGapRadarChart from "@/components/charts/SkillGapRadarChart";
@@ -13,10 +15,13 @@ import CurriculumDoctor from "@/components/CurriculumDoctor";
 import EmployabilitySimulator from "@/components/EmployabilitySimulator";
 import NarrativeFindings from "@/components/NarrativeFindings";
 import ActionPlan from "@/components/ActionPlan";
+import EmptyDashboardState from "@/components/EmptyDashboardState";
 import { downloadStudentReport } from "@/lib/student-report";
+import { loadStudentAnalysis, type StoredStudentAnalysis } from "@/lib/student-analysis-store";
+import { STUDENT_SCORE_LABELS } from "@/lib/student-analysis-schema";
 import {
   studentScoreCards, studentHealthMeter, studentSkillGapRadar, careerTrajectory, studentIndustryHeatmap,
-  studentMissingSkills, studentProfileDiagnostics, studentSimulatorAdditions, studentSimulatorBaseline,
+  studentMissingSkills, studentProfileDiagnostics, studentSimulatorAdditions,
   demoStudentName, demoStudentSummary, demoDetectedSkills, demoStudentFindings, demoCareerRoadmap,
 } from "@/lib/student-mock-data";
 
@@ -49,36 +54,71 @@ function SectionCard({
   );
 }
 
-const demoAnalysis = {
-  sourceFilenames: { resume: "demo-aarav-mehta-resume.pdf", transcript: "demo-aarav-mehta-transcript.pdf" },
-  analyzedAt: new Date().toISOString(),
-  result: {
-    studentName: demoStudentName,
-    summary: demoStudentSummary,
-    healthScore: studentHealthMeter.score,
-    healthLabel: studentHealthMeter.label,
-    scores: studentScoreCards.map((c) => ({
-      key: c.key,
-      label: c.label,
-      value: c.value,
-      rationale: "Sample rationale — upload your own resume for an analysis grounded in its actual content.",
-    })),
-    skillGapRadar: studentSkillGapRadar,
-    careerTrajectory,
-    industryHeatmap: studentIndustryHeatmap,
-    missingSkills: studentMissingSkills,
-    profileDiagnostics: studentProfileDiagnostics,
-    detectedSkills: demoDetectedSkills,
-    findings: demoStudentFindings,
-    careerRoadmap: demoCareerRoadmap,
-    simulatorAdditions: studentSimulatorAdditions,
-  },
-} as unknown as Parameters<typeof downloadStudentReport>[0];
+function buildDemoAnalysis(): StoredStudentAnalysis {
+  return {
+    sourceFilenames: { resume: "demo-aarav-mehta-resume.pdf", transcript: "demo-aarav-mehta-transcript.pdf" },
+    analyzedAt: new Date().toISOString(),
+    result: {
+      studentName: demoStudentName,
+      summary: demoStudentSummary,
+      healthScore: studentHealthMeter.score,
+      healthLabel: studentHealthMeter.label,
+      scores: studentScoreCards.map((c) => ({
+        key: c.key,
+        label: c.label,
+        value: c.value,
+        rationale: "Sample rationale — upload your own resume for a real analysis.",
+      })),
+      skillGapRadar: studentSkillGapRadar,
+      careerTrajectory,
+      industryHeatmap: studentIndustryHeatmap,
+      missingSkills: studentMissingSkills,
+      profileDiagnostics: studentProfileDiagnostics,
+      detectedSkills: demoDetectedSkills,
+      findings: demoStudentFindings,
+      careerRoadmap: demoCareerRoadmap,
+      simulatorAdditions: studentSimulatorAdditions,
+    },
+  } as StoredStudentAnalysis;
+}
 
 export default function StudentDashboardPage() {
+  return <Suspense><StudentDashboardContent /></Suspense>;
+}
+
+function StudentDashboardContent() {
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
+  const [analysis, setAnalysis] = useState<StoredStudentAnalysis | null | "loading">("loading");
+
+  useEffect(() => {
+    if (isDemo) {
+      setAnalysis(buildDemoAnalysis());
+    } else {
+      setAnalysis(loadStudentAnalysis());
+    }
+  }, [isDemo]);
+
+  if (analysis === "loading") return null;
+
+  if (!analysis) {
+    return (
+      <EmptyDashboardState
+        title="No Student Analysis Yet"
+        description="Upload your resume to generate an AI-powered career readiness report with skill gap analysis, career trajectory, and a personalized roadmap."
+        uploadHref="/students"
+        uploadLabel="Upload Your Resume"
+        demoHref="/student-dashboard?demo=true"
+        icon={<GraduationCap size={36} />}
+      />
+    );
+  }
+
+  const { result, sourceFilenames, analyzedAt } = analysis;
+  const isLive = !isDemo;
+
   return (
     <main className="min-h-screen bg-surface pb-24">
-      {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-silver bg-white/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 lg:px-8">
           <div className="flex items-center gap-4">
@@ -91,12 +131,18 @@ export default function StudentDashboardPage() {
             </Link>
             <div className="hidden h-6 w-px bg-silver sm:block" />
             <div className="hidden sm:block">
-              <p className="font-display text-sm font-bold text-navy">Demo Career Report</p>
-              <p className="text-xs text-muted">Aarav Mehta · Final Year, B.Tech CSE · Sample Data</p>
+              <p className="font-display text-sm font-bold text-navy">
+                {isLive ? `${result.studentName} · Career Report` : "Demo Career Report"}
+              </p>
+              <p className="text-xs text-muted">
+                {isLive
+                  ? `${sourceFilenames.resume} · Analyzed ${new Date(analyzedAt).toLocaleDateString()}`
+                  : "Aarav Mehta · Final Year, B.Tech CSE · Sample Data"}
+              </p>
             </div>
           </div>
           <button
-            onClick={() => downloadStudentReport(demoAnalysis)}
+            onClick={() => downloadStudentReport(analysis as Parameters<typeof downloadStudentReport>[0])}
             className="btn-ripple group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-deepblue to-deepblue-light px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated"
           >
             <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-emerald to-teal opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100" />
@@ -104,7 +150,6 @@ export default function StudentDashboardPage() {
             <span className="relative">Export Report</span>
           </button>
         </div>
-        {/* Section nav */}
         <div className="scrollbar-none mx-auto flex max-w-7xl gap-1.5 overflow-x-auto px-6 pb-3 lg:px-8">
           {sections.map((s) => (
             <a
@@ -120,49 +165,40 @@ export default function StudentDashboardPage() {
       </div>
 
       <div className="mx-auto max-w-7xl space-y-6 px-6 pt-8 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-dark">
-            AI Student Career Analysis Engine · Demo Report
+            AI Student Career Analysis Engine · {isLive ? "Live Report" : "Demo Report"}
           </span>
           <h1 className="mt-2 font-display text-2xl font-bold text-navy sm:text-3xl">
             Career Readiness Dashboard
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            A complete walkthrough of every report the platform generates for students — populated
-            with sample analysis so you can see the experience before uploading your own resume.
+            {isLive
+              ? `Career readiness analysis for ${result.studentName}.`
+              : "A complete walkthrough populated with sample analysis so you can see the experience before uploading your own resume."}
           </p>
         </motion.div>
 
         <div id="health" className="scroll-mt-28">
-          <HealthMeter
-            score={studentHealthMeter.score}
-            label={studentHealthMeter.label}
-            title="Career Readiness Meter"
-            subjectNoun="profile"
-          />
+          <HealthMeter score={result.healthScore} label={result.healthLabel} title="Career Readiness Meter" subjectNoun="profile" />
         </div>
 
-        <ScoreGrid scores={studentScoreCards} showHeading={false} />
+        <ScoreGrid
+          scores={result.scores.map((s) => ({
+            ...s,
+            label: s.label || STUDENT_SCORE_LABELS[s.key as keyof typeof STUDENT_SCORE_LABELS]?.label || s.key,
+            icon: STUDENT_SCORE_LABELS[s.key as keyof typeof STUDENT_SCORE_LABELS]?.icon ?? "Sparkles",
+          }))}
+          showHeading={false}
+        />
 
-        <SectionCard
-          id="findings"
-          title="Narrative Findings & Evidence"
-          subtitle="What the AI found in the documents — with direct citations — and why each finding matters."
-        >
-          <NarrativeFindings findings={demoStudentFindings as Parameters<typeof NarrativeFindings>[0]["findings"]} />
+        <SectionCard id="findings" title="Narrative Findings & Evidence" subtitle="What the AI found — with direct citations — and why each finding matters.">
+          <NarrativeFindings findings={result.findings as Parameters<typeof NarrativeFindings>[0]["findings"]} />
         </SectionCard>
 
-        <SectionCard
-          id="radar"
-          title="Your Skills vs. Industry Expectations"
-          subtitle="Demonstrated skill levels overlaid against what entry-level roles in this field now expect."
-        >
+        <SectionCard id="radar" title="Your Skills vs. Industry Expectations" subtitle="Demonstrated skill levels overlaid against what entry-level roles now expect.">
           <SkillGapRadarChart
-            data={studentSkillGapRadar}
+            data={result.skillGapRadar}
             seriesAKey="current"
             seriesALabel="Your Current Level"
             seriesAColor="#1E3A8A"
@@ -172,44 +208,31 @@ export default function StudentDashboardPage() {
           />
         </SectionCard>
 
-        <SectionCard
-          id="trajectory"
-          title="Your Career Trajectory"
-          subtitle="Projected readiness over the next two years — following the roadmap vs. staying on the current path."
-        >
-          <CareerTrajectoryChart data={careerTrajectory} />
+        <SectionCard id="trajectory" title="Your Career Trajectory" subtitle="Projected readiness — following the roadmap vs. staying on the current path.">
+          <CareerTrajectoryChart data={result.careerTrajectory} />
         </SectionCard>
 
-        <SectionCard
-          id="heatmap"
-          title="Industry Fit Heatmap"
-          subtitle="How well this profile aligns with hiring demand across major industry verticals."
-        >
-          <IndustryHeatmap data={studentIndustryHeatmap} />
+        <SectionCard id="heatmap" title="Industry Fit Heatmap" subtitle="How well this profile aligns with hiring demand across major verticals.">
+          <IndustryHeatmap data={result.industryHeatmap} />
         </SectionCard>
 
-        <SectionCard
-          id="missing"
-          title="Missing Skills Analysis"
-          subtitle="Ranked additions that would move the needle fastest on employability."
-        >
-          <MissingSkillsPanel data={studentMissingSkills} />
+        <SectionCard id="missing" title="Missing Skills Analysis" subtitle="Ranked additions that would move the needle fastest on employability.">
+          <MissingSkillsPanel data={result.missingSkills} />
         </SectionCard>
 
         <div id="roadmap" className="scroll-mt-28 grid gap-6 lg:grid-cols-2">
-          <ActionPlan
-            actions={demoCareerRoadmap}
-            title="Your Career Roadmap"
-            subtitle="What to do first — ranked by urgency and expected impact"
-          />
-          <CurriculumDoctor
-            data={studentProfileDiagnostics}
-            title="AI Resume Doctor™"
-            subtitle="Automatic profile diagnosis with prioritized recommendations"
-          />
+          <ActionPlan actions={result.careerRoadmap} title="Your Career Roadmap" subtitle="What to do first — ranked by urgency and expected impact" />
+          <CurriculumDoctor data={result.profileDiagnostics} title="AI Resume Doctor™" subtitle="Automatic profile diagnosis with prioritized recommendations" />
         </div>
 
-        <EmployabilitySimulator baseline={studentSimulatorBaseline} additions={studentSimulatorAdditions} />
+        <EmployabilitySimulator
+          baseline={{
+            employability: result.scores.find((s) => s.key === "technicalSkills")?.value ?? 50,
+            relevance: result.scores.find((s) => s.key === "industryReadiness")?.value ?? 50,
+            future: result.scores.find((s) => s.key === "marketAlignment")?.value ?? 50,
+          }}
+          additions={result.simulatorAdditions}
+        />
       </div>
     </main>
   );

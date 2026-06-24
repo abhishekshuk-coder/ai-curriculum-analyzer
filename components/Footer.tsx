@@ -15,8 +15,8 @@ const columns = [
     title: "Audiences",
     links: [
       { label: "For Students", href: "/students" },
-      { label: "For Faculty", href: "/#faculty" },
-      { label: "Executive Reporting", href: "/#reporting" },
+      { label: "For Faculty", href: "/faculty" },
+      { label: "Executive Reporting", href: "/executive" },
     ],
   },
   {

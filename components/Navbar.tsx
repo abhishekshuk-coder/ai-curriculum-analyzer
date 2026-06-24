@@ -9,8 +9,8 @@ const navItems = [
   { label: "Platform", href: "/#platform" },
   { label: "Dashboards", href: "/dashboard" },
   { label: "For Students", href: "/students" },
-  { label: "For Faculty", href: "/#faculty" },
-  { label: "Reporting", href: "/#reporting" },
+  { label: "For Faculty", href: "/faculty" },
+  { label: "Executive", href: "/executive" },
 ];
 
 export default function Navbar() {

@@ -1,8 +1,10 @@
 "use client";
 
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Download, Radar, TrendingUp, Grid3x3, ListChecks, Sparkles, FileSearch, ListOrdered } from "lucide-react";
+import { ArrowLeft, Download, Radar, TrendingUp, Grid3x3, ListChecks, Sparkles, FileSearch, ListOrdered, BarChart3 } from "lucide-react";
 import HealthMeter from "@/components/HealthMeter";
 import ScoreGrid from "@/components/ScoreGrid";
 import SkillGapRadarChart from "@/components/charts/SkillGapRadarChart";
@@ -13,7 +15,11 @@ import CurriculumDoctor from "@/components/CurriculumDoctor";
 import EmployabilitySimulator from "@/components/EmployabilitySimulator";
 import NarrativeFindings from "@/components/NarrativeFindings";
 import ActionPlan from "@/components/ActionPlan";
+import NirfBenchmark from "@/components/NirfBenchmark";
+import EmptyDashboardState from "@/components/EmptyDashboardState";
 import { downloadReport } from "@/lib/report";
+import { loadAnalysis, type StoredAnalysis } from "@/lib/analysis-store";
+import { SCORE_LABELS, type AnalysisResult } from "@/lib/analysis-schema";
 import {
   scoreCards, healthMeter, skillGapRadar, futureSkillsForecast, industryHeatmap,
   missingSkills, curriculumDoctor, simulatorAdditions,
@@ -49,36 +55,76 @@ function SectionCard({
   );
 }
 
-const demoAnalysis = {
-  sourceFilename: "demo-mba-strategy-analytics.pdf",
-  analyzedAt: new Date().toISOString(),
-  result: {
-    programName: demoProgramName,
-    summary: demoSummary,
-    healthScore: healthMeter.score,
-    healthLabel: healthMeter.label,
-    scores: scoreCards.map((c) => ({
-      key: c.key,
-      label: c.label,
-      value: c.value,
-      rationale: "Sample rationale — upload your own curriculum for an analysis grounded in its actual content.",
-    })),
-    skillGapRadar,
-    futureSkillsForecast,
-    industryHeatmap,
-    missingSkills,
-    curriculumDoctor,
-    detectedSubjects: demoDetectedSubjects,
-    findings: demoFindings,
-    actionPlan: demoActionPlan,
-    simulatorAdditions,
-  },
-} as unknown as Parameters<typeof downloadReport>[0];
+function buildDemoAnalysis(): StoredAnalysis {
+  return {
+    sourceFilename: "demo-mba-strategy-analytics.pdf",
+    analyzedAt: new Date().toISOString(),
+    result: {
+      programName: demoProgramName,
+      summary: demoSummary,
+      healthScore: healthMeter.score,
+      healthLabel: healthMeter.label,
+      scores: scoreCards.map((c) => ({
+        key: c.key,
+        label: c.label,
+        value: c.value,
+        rationale: "Sample rationale — upload your own curriculum for a real analysis.",
+      })),
+      skillGapRadar,
+      futureSkillsForecast,
+      industryHeatmap,
+      missingSkills,
+      curriculumDoctor,
+      detectedSubjects: demoDetectedSubjects,
+      findings: demoFindings,
+      actionPlan: demoActionPlan,
+      simulatorAdditions,
+      nirfBenchmark: {
+        fieldCategory: "Management / Business Administration",
+        benchmarkNarrative: "This is a demo report. Upload your own curriculum for real NIRF benchmarking against top-ranked Indian institutions in your field.",
+        gapAnalysis: "Upload a real curriculum document to see a grounded gap analysis comparing your program against top NIRF-ranked institutions.",
+      },
+    } as AnalysisResult,
+  };
+}
 
 export default function DashboardPage() {
+  return <Suspense><DashboardContent /></Suspense>;
+}
+
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
+  const [analysis, setAnalysis] = useState<StoredAnalysis | null | "loading">("loading");
+
+  useEffect(() => {
+    if (isDemo) {
+      setAnalysis(buildDemoAnalysis());
+    } else {
+      setAnalysis(loadAnalysis());
+    }
+  }, [isDemo]);
+
+  if (analysis === "loading") return null;
+
+  if (!analysis) {
+    return (
+      <EmptyDashboardState
+        title="No Curriculum Analysis Yet"
+        description="Upload a curriculum document to generate an AI-powered analysis dashboard with health scores, skill gap radar, industry alignment, action plans, and NIRF benchmarking."
+        uploadHref="/"
+        uploadLabel="Upload a Curriculum"
+        demoHref="/dashboard?demo=true"
+        icon={<BarChart3 size={36} />}
+      />
+    );
+  }
+
+  const { result, sourceFilename, analyzedAt } = analysis;
+  const isLive = !isDemo;
+
   return (
     <main className="min-h-screen bg-surface pb-24">
-      {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-silver bg-white/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 lg:px-8">
           <div className="flex items-center gap-4">
@@ -91,12 +137,18 @@ export default function DashboardPage() {
             </Link>
             <div className="hidden h-6 w-px bg-silver sm:block" />
             <div className="hidden sm:block">
-              <p className="font-display text-sm font-bold text-navy">Demo Curriculum Report</p>
-              <p className="text-xs text-muted">MBA — Strategy & Analytics · Sample Data</p>
+              <p className="font-display text-sm font-bold text-navy">
+                {isLive ? result.programName : "Demo Curriculum Report"}
+              </p>
+              <p className="text-xs text-muted">
+                {isLive
+                  ? `${sourceFilename} · Analyzed ${new Date(analyzedAt).toLocaleDateString()}`
+                  : "MBA — Strategy & Analytics · Sample Data"}
+              </p>
             </div>
           </div>
           <button
-            onClick={() => downloadReport(demoAnalysis)}
+            onClick={() => downloadReport(analysis as Parameters<typeof downloadReport>[0])}
             className="btn-ripple group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-deepblue to-deepblue-light px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated"
           >
             <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-emerald to-teal opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100" />
@@ -104,7 +156,6 @@ export default function DashboardPage() {
             <span className="relative">Export Report</span>
           </button>
         </div>
-        {/* Section nav */}
         <div className="scrollbar-none mx-auto flex max-w-7xl gap-1.5 overflow-x-auto px-6 pb-3 lg:px-8">
           {sections.map((s) => (
             <a
@@ -120,75 +171,72 @@ export default function DashboardPage() {
       </div>
 
       <div className="mx-auto max-w-7xl space-y-6 px-6 pt-8 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-dark">
-            AI Curriculum Analysis Engine · Demo Report
+            AI Curriculum Analysis Engine · {isLive ? "Live Report" : "Demo Report"}
           </span>
           <h1 className="mt-2 font-display text-2xl font-bold text-navy sm:text-3xl">
             Curriculum Relevance Dashboard
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            A complete walkthrough of every dashboard the platform generates — populated with
-            sample analysis so you can see the experience before connecting your own data.
+            {isLive
+              ? `Analysis of ${result.programName} — ${result.summary.slice(0, 120)}…`
+              : "A complete walkthrough populated with sample analysis so you can see the experience before connecting your own data."}
           </p>
         </motion.div>
 
         <div id="health" className="scroll-mt-28">
-          <HealthMeter />
+          <HealthMeter score={result.healthScore} label={result.healthLabel} />
         </div>
 
-        <ScoreGrid />
+        <ScoreGrid
+          scores={result.scores.map((s) => ({
+            ...s,
+            label: s.label || SCORE_LABELS[s.key as keyof typeof SCORE_LABELS]?.label || s.key,
+            icon: SCORE_LABELS[s.key as keyof typeof SCORE_LABELS]?.icon ?? "Sparkles",
+          }))}
+          showHeading={false}
+        />
 
-        <SectionCard
-          id="findings"
-          title="Narrative Findings & Evidence"
-          subtitle="What the AI found in the document — with direct citations — and why each finding matters."
-        >
-          <NarrativeFindings findings={demoFindings as Parameters<typeof NarrativeFindings>[0]["findings"]} />
+        <SectionCard id="findings" title="Narrative Findings & Evidence" subtitle="What the AI found — with direct citations — and why each finding matters.">
+          <NarrativeFindings findings={result.findings as Parameters<typeof NarrativeFindings>[0]["findings"]} />
         </SectionCard>
 
-        <SectionCard
-          id="radar"
-          title="Skill Gap Radar"
-          subtitle="Your curriculum's skill coverage overlaid against live industry demand."
-        >
-          <SkillGapRadarChart />
+        <SectionCard id="radar" title="Skill Gap Radar" subtitle="Curriculum skill coverage overlaid against live industry demand.">
+          <SkillGapRadarChart data={result.skillGapRadar} />
         </SectionCard>
 
-        <SectionCard
-          id="forecast"
-          title="Future Skills Forecast (2025 – 2030)"
-          subtitle="Projected demand trajectories for the skill families shaping future hiring."
-        >
-          <FutureForecastChart />
+        <SectionCard id="forecast" title="Future Skills Forecast (2025 – 2030)" subtitle="Projected demand trajectories for the skill families shaping future hiring.">
+          <FutureForecastChart data={result.futureSkillsForecast} />
         </SectionCard>
 
-        <SectionCard
-          id="heatmap"
-          title="Industry Alignment Heatmap"
-          subtitle="How well this curriculum aligns with hiring demand across major verticals."
-        >
-          <IndustryHeatmap />
+        <SectionCard id="heatmap" title="Industry Alignment Heatmap" subtitle="How well this curriculum aligns with hiring demand across major verticals.">
+          <IndustryHeatmap data={result.industryHeatmap} />
         </SectionCard>
 
-        <SectionCard
-          id="missing"
-          title="Missing Skills Analysis"
-          subtitle="Ranked additions that would move the needle fastest on employability."
-        >
-          <MissingSkillsPanel />
+        <SectionCard id="missing" title="Missing Skills Analysis" subtitle="Ranked additions that would move the needle fastest on employability.">
+          <MissingSkillsPanel data={result.missingSkills} />
         </SectionCard>
 
         <div id="plan" className="scroll-mt-28 grid gap-6 lg:grid-cols-2">
-          <ActionPlan actions={demoActionPlan} />
-          <CurriculumDoctor />
+          <ActionPlan actions={result.actionPlan} />
+          <CurriculumDoctor data={result.curriculumDoctor} />
         </div>
 
-        <EmployabilitySimulator />
+        {result.nirfBenchmark && (
+          <SectionCard id="nirf" title="NIRF Benchmarking" subtitle="How this curriculum compares to top NIRF-ranked institutions in the same field.">
+            <NirfBenchmark data={result.nirfBenchmark} />
+          </SectionCard>
+        )}
+
+        <EmployabilitySimulator
+          baseline={{
+            employability: result.scores.find((s) => s.key === "employability")?.value ?? 50,
+            relevance: result.scores.find((s) => s.key === "relevance")?.value ?? 50,
+            future: result.scores.find((s) => s.key === "future")?.value ?? 50,
+          }}
+          additions={result.simulatorAdditions}
+        />
       </div>
     </main>
   );

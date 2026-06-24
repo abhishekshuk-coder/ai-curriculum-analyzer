@@ -23,6 +23,7 @@ const modules = [
   },
   {
     id: "faculty",
+    href: "/faculty",
     icon: Users,
     title: "For Faculty",
     tagline: "Turn insight into curriculum action",
@@ -38,6 +39,7 @@ const modules = [
   },
   {
     id: "reporting",
+    href: "/executive",
     icon: FileBarChart,
     title: "Executive Reporting",
     tagline: "Board-ready, accreditation-ready",
